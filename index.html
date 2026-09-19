@@ -65,16 +65,16 @@
   .flor-cayendo {
     position: absolute;
     top: -100px;
-    width: 90px;
-    height: 90px;
+    width: 85px;
+    height: 85px;
     z-index: 20;
-    cursor: crosshair;
+    cursor: pointer;
     animation: caerMinijuego linear forwards;
     transform-origin: center;
     will-change: transform, top;
   }
   @keyframes caerMinijuego {
-    to { top: 110vh; transform: rotate(120deg); }
+    to { top: 110vh; transform: rotate(180deg); }
   }
 
   .petalo-suelto {
@@ -83,7 +83,7 @@
     height: 18px;
     background: linear-gradient(135deg, #fffdf9, #f3b8c9);
     border: 1px solid rgba(214,150,170,.45);
-    border-radius: 50% 0 50% 0; /* Forma de pétalo CSS */
+    border-radius: 50% 0 50% 0;
     z-index: 20;
     animation: explotar 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
     pointer-events: none;
@@ -167,16 +167,6 @@
   }
   .jardin{position:absolute;left:0;right:0;bottom:0;height:100%;z-index:5;pointer-events:none;}
  
-  .charco{
-    position:absolute;bottom:3%;height:1px;border-radius:50%;
-    background:rgba(255,255,255,.7);
-    box-shadow:0 0 10px 2px rgba(255,255,255,.45);
-    animation:onda 3.2s ease-out infinite;
-    z-index:4;pointer-events:none;
-    will-change:transform, opacity;
-  }
-  @keyframes onda{0%{transform:scaleX(.15);opacity:0;}30%{opacity:.8;}100%{transform:scaleX(1.7);opacity:0;}}
- 
   /* Lirios */
   .lirio{position:absolute;bottom:0;transform-origin:bottom center;overflow:visible;will-change:transform;}
   .lirio .tallo,.lirio .nervio{
@@ -233,7 +223,7 @@
  
 <main class="escena" id="escena">
   <button id="btnAudio" class="btn-ui">🎵 Sonido</button>
-  <button id="btnJuego" class="btn-ui">🌸 Soltar Flor</button>
+  <button id="btnJuego" class="btn-ui">🎮 Minijuego</button>
 
   <div class="sol" aria-hidden="true"></div>
   <div class="arcoiris" aria-hidden="true"></div>
@@ -249,6 +239,7 @@
   var escena = document.getElementById('escena');
   var btnAudio = document.getElementById('btnAudio');
   var btnJuego = document.getElementById('btnJuego');
+  var jardin = document.getElementById('jardin');
   
   // -- SISTEMA DE AUDIO --
   var audioCtx = null;
@@ -325,18 +316,19 @@
     initAudio();
   });
 
-  // -- SISTEMA DE MINIJUEGO --
-  btnJuego.addEventListener('click', function(e){
-    e.stopPropagation();
-    if (!audioCtx) initAudio(); // Enciende el audio si no lo estaba
-    
+  // -- SISTEMA DE MINIJUEGO CONTINUO --
+  var enMinijuego = false;
+  var timerMinijuego = null;
+
+  function crearFlorCayendo() {
+    if (!enMinijuego) return;
+
     var svgFlor = document.createElementNS('http://www.w3.org/2000/svg','svg');
     svgFlor.setAttribute('viewBox','0 0 100 100');
     svgFlor.setAttribute('class','flor-cayendo');
     
-    // Posición aleatoria y velocidad aleatoria para que sea un reto
-    svgFlor.style.left = (10 + Math.random()*70) + '%';
-    svgFlor.style.animationDuration = (2.5 + Math.random()*2.5) + 's';
+    svgFlor.style.left = (8 + Math.random()*78) + '%';
+    svgFlor.style.animationDuration = (2.2 + Math.random()*2.3) + 's';
     
     svgFlor.innerHTML =
       '<g transform="translate(50 50) scale(0.85)">' +
@@ -353,28 +345,22 @@
 
     escena.appendChild(svgFlor);
 
-    // Si toca el suelo sin ser presionada, se borra en silencio
     svgFlor.addEventListener('animationend', function() {
       if(svgFlor.parentNode) svgFlor.parentNode.removeChild(svgFlor);
     });
 
-    // ¡Si el jugador acierta y la toca a tiempo!
     svgFlor.addEventListener('pointerdown', function(ev) {
-      ev.stopPropagation(); // Evita que se plante una flor de fondo
+      ev.stopPropagation();
       ev.preventDefault();
       
-      // Obtener posición para los pétalos
       var rect = svgFlor.getBoundingClientRect();
       var cx = rect.left + rect.width / 2;
       var cy = rect.top + rect.height / 2;
       
-      // Elimina la flor original
       if(svgFlor.parentNode) svgFlor.parentNode.removeChild(svgFlor);
       
-      // Suena la campanilla del premio
       tocarCampana();
       
-      // Explosión de pétalos (Partículas)
       for(var i=0; i<8; i++) {
         var p = document.createElement('div');
         p.className = 'petalo-suelto';
@@ -382,7 +368,7 @@
         p.style.top = cy + 'px';
         
         var angulo = (Math.PI * 2 / 8) * i + (Math.random()*0.5);
-        var dist = 50 + Math.random() * 70; // distancia de la explosión
+        var dist = 50 + Math.random() * 70;
         
         p.style.setProperty('--tx', (Math.cos(angulo) * dist) + 'px');
         p.style.setProperty('--ty', (Math.sin(angulo) * dist) + 'px');
@@ -390,12 +376,53 @@
         
         document.body.appendChild(p);
         
-        // Limpiar el pétalo después de la animación
         setTimeout((function(petal){ 
           return function(){ if(petal.parentNode) petal.parentNode.removeChild(petal); };
-        })(p), 900);
+        })(p), 850);
       }
     }, {passive: false});
+  }
+
+  function bucleMinijuego() {
+    if (!enMinijuego) return;
+    crearFlorCayendo();
+    var tiempo = 900 + Math.random() * 1200; // Caen continuamente cada 0.9s - 2.1s
+    timerMinijuego = setTimeout(bucleMinijuego, tiempo);
+  }
+
+  function iniciarMinijuego() {
+    enMinijuego = true;
+    btnJuego.textContent = '🌸 Volver al Jardín';
+    
+    // 1. Quitar todos los lirios del suelo
+    jardin.innerHTML = '';
+    
+    // 2. Iniciar caída infinita
+    bucleMinijuego();
+  }
+
+  function detenerMinijuego() {
+    enMinijuego = false;
+    btnJuego.textContent = '🎮 Minijuego';
+    clearTimeout(timerMinijuego);
+    
+    // Limpiar flores cayendo pendientes
+    var flores = document.querySelectorAll('.flor-cayendo');
+    flores.forEach(function(f){ if(f.parentNode) f.parentNode.removeChild(f); });
+
+    // Volver a sembrar el jardín inicial
+    cantero.forEach(function(l){ sembrar(l[0], l[1], l[2], l[3]); });
+  }
+
+  btnJuego.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (!audioCtx) initAudio();
+    
+    if (!enMinijuego) {
+      iniciarMinijuego();
+    } else {
+      detenerMinijuego();
+    }
   });
  
   // -- FUNCIONES DE LLUVIA Y JARDÍN --
@@ -446,8 +473,6 @@
     escena.appendChild(br);
   }
 
-  var jardin = document.getElementById('jardin');
- 
   function petalos(){
     var d = '';
     var fuera = 'M0 0 C -26 -26 -22 -64 0 -88 C 22 -64 26 -26 0 0 Z';
@@ -506,8 +531,8 @@
   cantero.forEach(function(l){ sembrar(l[0], l[1], l[2], l[3]); });
  
   escena.addEventListener('pointerdown', function(e){
-    // Prevenir que se plante la flor si se tocaron los botones
     if (e.target.closest('.btn-ui')) return;
+    if (enMinijuego) return; // No sembrar flores en el suelo durante el minijuego
     
     if (!audioCtx) initAudio();
     e.preventDefault();
