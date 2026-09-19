@@ -38,10 +38,9 @@
       linear-gradient(176deg,#7fb0e6 0%, #a9c8ee 26%, #d5dcf3 52%, #f6dfd6 76%, #ffe7cd 100%);
   }
 
-  /* Botón de control de sonido */
-  .btn-audio {
+  /* Botones de control */
+  .btn-ui {
     position: absolute;
-    top: max(15px, env(safe-area-inset-top));
     right: 15px;
     z-index: 10;
     background: rgba(255, 255, 255, 0.4);
@@ -55,12 +54,46 @@
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
   }
-  .btn-audio:active {
-    transform: scale(0.95);
-  }
+  .btn-ui:active { transform: scale(0.92); }
+  
+  #btnAudio { top: max(15px, env(safe-area-inset-top)); }
+  #btnJuego { top: max(55px, calc(env(safe-area-inset-top) + 48px)); }
  
+  /* Minijuego - Flor cayendo y pétalos */
+  .flor-cayendo {
+    position: absolute;
+    top: -100px;
+    width: 90px;
+    height: 90px;
+    z-index: 20;
+    cursor: crosshair;
+    animation: caerMinijuego linear forwards;
+    transform-origin: center;
+    will-change: transform, top;
+  }
+  @keyframes caerMinijuego {
+    to { top: 110vh; transform: rotate(120deg); }
+  }
+
+  .petalo-suelto {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, #fffdf9, #f3b8c9);
+    border: 1px solid rgba(214,150,170,.45);
+    border-radius: 50% 0 50% 0; /* Forma de pétalo CSS */
+    z-index: 20;
+    animation: explotar 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  @keyframes explotar {
+    0% { opacity: 1; transform: translate(0,0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3) rotate(var(--rot)); }
+  }
+
   /* Sol y nubes */
   .sol{
     position:absolute;right:14%;top:16%;
@@ -144,12 +177,11 @@
   }
   @keyframes onda{0%{transform:scaleX(.15);opacity:0;}30%{opacity:.8;}100%{transform:scaleX(1.7);opacity:0;}}
  
-  /* Lirios (Ajuste de animación de tallo arreglado) */
+  /* Lirios */
   .lirio{position:absolute;bottom:0;transform-origin:bottom center;overflow:visible;will-change:transform;}
   .lirio .tallo,.lirio .nervio{
     fill:none;stroke:var(--tallo);stroke-linecap:round;
-    stroke-dasharray:300;
-    stroke-dashoffset:300;
+    stroke-dasharray:300; stroke-dashoffset:300;
     animation:crecer 1.9s cubic-bezier(.24,.8,.3,1) forwards;
     animation-delay:var(--d,0s);
   }
@@ -200,7 +232,9 @@
 </svg>
  
 <main class="escena" id="escena">
-  <button id="btnAudio" class="btn-audio">🎵 Activar Sonido</button>
+  <button id="btnAudio" class="btn-ui">🎵 Sonido</button>
+  <button id="btnJuego" class="btn-ui">🌸 Soltar Flor</button>
+
   <div class="sol" aria-hidden="true"></div>
   <div class="arcoiris" aria-hidden="true"></div>
   <div class="lluvia fondo" id="lluviaFondo" aria-hidden="true"></div>
@@ -214,8 +248,9 @@
   var esMovil = window.innerWidth < 768;
   var escena = document.getElementById('escena');
   var btnAudio = document.getElementById('btnAudio');
+  var btnJuego = document.getElementById('btnJuego');
   
-  // Sistema de Audio Sintetizado (Sintetizador Web Audio API)
+  // -- SISTEMA DE AUDIO --
   var audioCtx = null;
   var rainGain = null;
   var sonidoActivo = false;
@@ -225,7 +260,6 @@
       var AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AudioContext();
 
-      // Ruido rosa/blanco filtrado para sonido de lluvia
       var bufferSize = 2 * audioCtx.sampleRate;
       var noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       var output = noiseBuffer.getChannelData(0);
@@ -250,12 +284,12 @@
       whiteNoise.start();
       
       sonidoActivo = true;
-      btnAudio.textContent = '🔊 Lluvia & Música';
+      btnAudio.textContent = '🔊 Lluvia';
     } else {
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
         sonidoActivo = true;
-        btnAudio.textContent = '🔊 Lluvia & Música';
+        btnAudio.textContent = '🔊 Lluvia';
       } else if (sonidoActivo) {
         audioCtx.suspend();
         sonidoActivo = false;
@@ -263,7 +297,7 @@
       } else {
         audioCtx.resume();
         sonidoActivo = true;
-        btnAudio.textContent = '🔊 Lluvia & Música';
+        btnAudio.textContent = '🔊 Lluvia';
       }
     }
   }
@@ -271,22 +305,17 @@
   function tocarCampana() {
     if (!audioCtx || audioCtx.state !== 'running' || !sonidoActivo) return;
     
-    // Escala pentatónica relajante
     var notas = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
     var freq = notas[Math.floor(Math.random() * notas.length)];
 
     var osc = audioCtx.createOscillator();
     var gain = audioCtx.createGain();
-
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
     gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.2);
-
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     osc.start();
     osc.stop(audioCtx.currentTime + 2.2);
   }
@@ -295,7 +324,81 @@
     e.stopPropagation();
     initAudio();
   });
+
+  // -- SISTEMA DE MINIJUEGO --
+  btnJuego.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (!audioCtx) initAudio(); // Enciende el audio si no lo estaba
+    
+    var svgFlor = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svgFlor.setAttribute('viewBox','0 0 100 100');
+    svgFlor.setAttribute('class','flor-cayendo');
+    
+    // Posición aleatoria y velocidad aleatoria para que sea un reto
+    svgFlor.style.left = (10 + Math.random()*70) + '%';
+    svgFlor.style.animationDuration = (2.5 + Math.random()*2.5) + 's';
+    
+    svgFlor.innerHTML =
+      '<g transform="translate(50 50) scale(0.85)">' +
+        '<circle class="halo" r="42"/>' +
+        petalos() +
+        '<circle class="corazon" r="9"/>' +
+        '<line class="estambre" x1="0" y1="0" x2="-8" y2="-27"/>' +
+        '<line class="estambre" x1="0" y1="0" x2="1" y2="-33"/>' +
+        '<line class="estambre" x1="0" y1="0" x2="9" y2="-26"/>' +
+        '<circle class="polen" cx="-8" cy="-28" r="2.6"/>' +
+        '<circle class="polen" cx="1" cy="-34" r="2.8"/>' +
+        '<circle class="polen" cx="9" cy="-27" r="2.6"/>' +
+      '</g>';
+
+    escena.appendChild(svgFlor);
+
+    // Si toca el suelo sin ser presionada, se borra en silencio
+    svgFlor.addEventListener('animationend', function() {
+      if(svgFlor.parentNode) svgFlor.parentNode.removeChild(svgFlor);
+    });
+
+    // ¡Si el jugador acierta y la toca a tiempo!
+    svgFlor.addEventListener('pointerdown', function(ev) {
+      ev.stopPropagation(); // Evita que se plante una flor de fondo
+      ev.preventDefault();
+      
+      // Obtener posición para los pétalos
+      var rect = svgFlor.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      
+      // Elimina la flor original
+      if(svgFlor.parentNode) svgFlor.parentNode.removeChild(svgFlor);
+      
+      // Suena la campanilla del premio
+      tocarCampana();
+      
+      // Explosión de pétalos (Partículas)
+      for(var i=0; i<8; i++) {
+        var p = document.createElement('div');
+        p.className = 'petalo-suelto';
+        p.style.left = cx + 'px';
+        p.style.top = cy + 'px';
+        
+        var angulo = (Math.PI * 2 / 8) * i + (Math.random()*0.5);
+        var dist = 50 + Math.random() * 70; // distancia de la explosión
+        
+        p.style.setProperty('--tx', (Math.cos(angulo) * dist) + 'px');
+        p.style.setProperty('--ty', (Math.sin(angulo) * dist) + 'px');
+        p.style.setProperty('--rot', (Math.random()*360)+'deg');
+        
+        document.body.appendChild(p);
+        
+        // Limpiar el pétalo después de la animación
+        setTimeout((function(petal){ 
+          return function(){ if(petal.parentNode) petal.parentNode.removeChild(petal); };
+        })(p), 900);
+      }
+    }, {passive: false});
+  });
  
+  // -- FUNCIONES DE LLUVIA Y JARDÍN --
   function llover(capa, cantidad, rapido){
     var frag = document.createDocumentFragment();
     for(var i=0;i<cantidad;i++){
@@ -403,7 +506,9 @@
   cantero.forEach(function(l){ sembrar(l[0], l[1], l[2], l[3]); });
  
   escena.addEventListener('pointerdown', function(e){
-    if (e.target === btnAudio) return;
+    // Prevenir que se plante la flor si se tocaron los botones
+    if (e.target.closest('.btn-ui')) return;
+    
     if (!audioCtx) initAudio();
     e.preventDefault();
     var x = (e.clientX / window.innerWidth) * 100;
