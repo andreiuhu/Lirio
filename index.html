@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lirios bajo la lluvia</title>
+<style>
+  :root{
+    --cielo-alto:#8fb8e8;
+    --cielo-medio:#cfd8f2;
+    --cielo-bajo:#ffe2cf;
+    --sol:#ffd79a;
+    --lirio:#fffaf3;
+    --rubor:#f6c3d0;
+    --tallo:#7ea86f;
+    --tallo-claro:#a3c78d;
+ 
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit;}
+  html,body{height:100%;margin:0;overflow:hidden;touch-action:none;}
+  body{
+    background:var(--cielo-medio);
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+ 
+  .escena{
+    position:relative;height:100%;width:100%;overflow:hidden;cursor:crosshair;
+    touch-action:none;
+    background:
+      radial-gradient(90% 55% at 78% 78%, rgba(255,215,154,.55), transparent 62%),
+      radial-gradient(70% 45% at 20% 12%, rgba(255,255,255,.55), transparent 70%),
+      linear-gradient(176deg,#7fb0e6 0%, #a9c8ee 26%, #d5dcf3 52%, #f6dfd6 76%, #ffe7cd 100%);
+  }
+ 
+  /* Sol y nubes optimizados */
+  .sol{
+    position:absolute;right:14%;top:16%;
+    width:min(34vmin,300px);aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,247,226,.95) 0%, rgba(255,214,150,.55) 38%, rgba(255,214,150,0) 72%);
+    animation:respirar 9s ease-in-out infinite;
+    pointer-events:none;
+    will-change:transform, opacity;
+  }
+  @keyframes respirar{0%,100%{opacity:.85;transform:scale(1);}50%{opacity:1;transform:scale(1.06);}}
+ 
+  .nube{
+    position:absolute;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 40% 40%, rgba(255,255,255,.92), rgba(226,234,250,.55) 60%, rgba(226,234,250,0) 78%);
+    animation:pasar linear infinite;
+    will-change:transform;
+  }
+  @keyframes pasar{from{transform:translateX(-25vw);}to{transform:translateX(125vw);}}
+ 
+  .arcoiris{
+    position:absolute;left:50%;bottom:8%;
+    width:150vmin;height:150vmin;
+    transform:translateX(-50%);
+    border-radius:50%;
+    pointer-events:none;opacity:.22;
+    background:conic-gradient(from 270deg at 50% 50%,
+      transparent 0deg, transparent 84deg,
+      rgba(255,140,140,.9) 87deg, rgba(255,205,130,.9) 89.5deg,
+      rgba(250,240,150,.9) 91deg, rgba(150,220,170,.9) 92.5deg,
+      rgba(150,190,240,.9) 94deg, rgba(190,160,230,.9) 96deg,
+      transparent 99deg, transparent 360deg);
+    -webkit-mask:radial-gradient(circle, transparent 60%, #000 60.4%, #000 66%, transparent 66.4%);
+    mask:radial-gradient(circle, transparent 60%, #000 60.4%, #000 66%, transparent 66.4%);
+  }
+ 
+  /* Lluvia optimizada */
+  .lluvia{position:absolute;inset:-12% 0 0 0;pointer-events:none;overflow:hidden;}
+  .lluvia.frente{z-index:7;}
+  .lluvia.fondo{z-index:2;}
+  .gota{
+    position:absolute;top:-16vh;width:1.5px;border-radius:2px;
+    background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,.85));
+    transform:rotate(8deg);
+    animation:caer linear infinite;
+    will-change:transform;
+  }
+  .lluvia.fondo .gota{opacity:.4;}
+  @keyframes caer{to{transform:translateY(132vh) rotate(8deg);}}
+ 
+  .brillo{
+    position:absolute;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle, rgba(255,255,255,.9), rgba(255,236,206,.35) 45%, transparent 70%);
+    animation:flotar linear infinite;
+    z-index:6;
+    will-change:transform, opacity;
+  }
+  @keyframes flotar{
+    0%{transform:translateY(12vh) scale(.7);opacity:0;}
+    25%{opacity:.75;}
+    100%{transform:translateY(-22vh) scale(1.1);opacity:0;}
+  }
+ 
+  /* Prado y jardín */
+  .prado{
+    position:absolute;left:0;right:0;bottom:0;height:17%;z-index:3;pointer-events:none;
+    background:linear-gradient(to top, #6f9a63 0%, #86ad6f 45%, rgba(150,186,130,.5) 80%, transparent 100%);
+  }
+  .prado::after{
+    content:"";position:absolute;inset:auto 0 0 0;height:60%;
+    background:radial-gradient(60% 100% at 78% 100%, rgba(255,223,164,.5), transparent 70%);
+  }
+  .jardin{position:absolute;left:0;right:0;bottom:0;height:100%;z-index:5;pointer-events:none;}
+ 
+  .charco{
+    position:absolute;bottom:3%;height:1px;border-radius:50%;
+    background:rgba(255,255,255,.7);
+    box-shadow:0 0 10px 2px rgba(255,255,255,.45);
+    animation:onda 3.2s ease-out infinite;
+    z-index:4;pointer-events:none;
+    will-change:transform, opacity;
+  }
+  @keyframes onda{0%{transform:scaleX(.15);opacity:0;}30%{opacity:.8;}100%{transform:scaleX(1.7);opacity:0;}}
+ 
+  /* Lirios */
+  .lirio{position:absolute;bottom:0;transform-origin:bottom center;overflow:visible;will-change:transform;}
+  .lirio .tallo,.lirio .nervio{
+    fill:none;stroke:var(--tallo);stroke-linecap:round;
+    stroke-dasharray:1;stroke-dashoffset:1;
+    animation:crecer 1.9s cubic-bezier(.24,.8,.3,1) forwards;
+    animation-delay:var(--d,0s);
+  }
+  @keyframes crecer{to{stroke-dashoffset:0;}}
+  .lirio .hoja{
+    fill:var(--tallo-claro);opacity:0;
+    animation:hoja 1s ease-out forwards;
+    animation-delay:calc(var(--d,0s) + .6s);
+  }
+  @keyframes hoja{from{opacity:0;}to{opacity:.95;}}
+  .lirio .flor{
+    opacity:0;transform-origin:100px 96px;
+    animation:abrir 1.4s cubic-bezier(.2,1.35,.35,1) forwards;
+    animation-delay:calc(var(--d,0s) + 1.35s);
+  }
+  @keyframes abrir{
+    from{opacity:0;transform:scale(.06) rotate(-18deg);}
+    55%{opacity:1;}
+    to{opacity:1;transform:scale(1) rotate(0);}
+  }
+  .lirio .petalo{fill:url(#petalo);stroke:rgba(214,150,170,.45);stroke-width:.7;stroke-linejoin:round;}
+  .lirio .petalo.interior{fill:url(#interior);}
+  .lirio .corazon{fill:url(#interior);}
+  .lirio .estambre{stroke:#e9a95c;stroke-width:1.7;stroke-linecap:round;}
+  .lirio .polen{fill:#e08f4a;}
+  .lirio .halo{fill:url(#halo);}
+</style>
+</head>
+<body>
+ 
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <linearGradient id="petalo" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#f3b8c9"/>
+      <stop offset="40%" stop-color="#fde6ec"/>
+      <stop offset="100%" stop-color="#fffdf9"/>
+    </linearGradient>
+    <linearGradient id="interior" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#eda3b8"/>
+      <stop offset="55%" stop-color="#fbdce4"/>
+      <stop offset="100%" stop-color="#fffaf4"/>
+    </linearGradient>
+    <radialGradient id="halo">
+      <stop offset="0%" stop-color="rgba(255,255,255,.55)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+</svg>
+ 
+<main class="escena" id="escena">
+  <div class="sol" aria-hidden="true"></div>
+  <div class="arcoiris" aria-hidden="true"></div>
+  <div class="lluvia fondo" id="lluviaFondo" aria-hidden="true"></div>
+  <div class="prado" aria-hidden="true"></div>
+  <div class="jardin" id="jardin" aria-hidden="true"></div>
+  <div class="lluvia frente" id="lluviaFrente" aria-hidden="true"></div>
+</main>
+ 
+<script>
+(function(){
+  var esMovil = window.innerWidth < 768;
+  var escena = document.getElementById('escena');
+ 
+  function llover(capa, cantidad, rapido){
+    var frag = document.createDocumentFragment();
+    for(var i=0;i<cantidad;i++){
+      var g = document.createElement('span');
+      g.className = 'gota';
+      g.style.left = (Math.random()*104 - 2) + '%';
+      g.style.height = (rapido ? 12 + Math.random()*20 : 7 + Math.random()*12) + 'vh';
+      g.style.animationDuration = ((rapido ? .6 : 1) + Math.random()*.6) + 's';
+      g.style.animationDelay = (-Math.random()*2.5) + 's';
+      g.style.opacity = (rapido ? .45 + Math.random()*.35 : .35);
+      frag.appendChild(g);
+    }
+    capa.appendChild(frag);
+  }
+ 
+  // Adaptar cantidad de elementos al rendimiento del dispositivo
+  llover(document.getElementById('lluviaFondo'), esMovil ? 25 : 60, false);
+  llover(document.getElementById('lluviaFrente'), esMovil ? 15 : 34, true);
+
+  var numNubes = esMovil ? 2 : 5;
+  for(var n=0; n<numNubes; n++){
+    var nube = document.createElement('div');
+    nube.className = 'nube';
+    var ancho = 26 + Math.random()*30;
+    nube.style.width = ancho + 'vw';
+    nube.style.height = (ancho*0.34) + 'vw';
+    nube.style.top = (2 + Math.random()*28) + '%';
+    nube.style.left = (Math.random()*100 - 20) + '%';
+    nube.style.opacity = (.35 + Math.random()*.4).toFixed(2);
+    nube.style.animationDuration = (90 + Math.random()*70) + 's';
+    nube.style.animationDelay = (-Math.random()*90) + 's';
+    escena.appendChild(nube);
+  }
+
+  var numBrillos = esMovil ? 6 : 16;
+  for(var b=0; b<numBrillos; b++){
+    var br = document.createElement('span');
+    br.className = 'brillo';
+    var t = 3 + Math.random()*5;
+    br.style.width = t + 'px';
+    br.style.height = t + 'px';
+    br.style.left = (Math.random()*100) + '%';
+    br.style.bottom = (10 + Math.random()*35) + '%';
+    br.style.animationDuration = (7 + Math.random()*7) + 's';
+    br.style.animationDelay = (-Math.random()*10) + 's';
+    escena.appendChild(br);
+  }
+
+  var jardin = document.getElementById('jardin');
+ 
+  function petalos(){
+    var d = '';
+    var fuera = 'M0 0 C -26 -26 -22 -64 0 -88 C 22 -64 26 -26 0 0 Z';
+    var dentro = 'M0 0 C -17 -20 -15 -46 0 -64 C 15 -46 17 -20 0 0 Z';
+    for(var i=0;i<6;i++){ d += '<path class="petalo" d="'+fuera+'" transform="rotate('+(i*60+30)+')"/>'; }
+    for(var j=0;j<6;j++){ d += '<path class="petalo interior" d="'+dentro+'" transform="rotate('+(j*60)+')"/>'; }
+    return d;
+  }
+ 
+  function sembrar(izq, alto, retraso, profundidad){
+    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 200 260');
+    svg.setAttribute('preserveAspectRatio','xMidYMax meet');
+    svg.setAttribute('class','lirio');
+    svg.style.left = izq + '%';
+    svg.style.width = alto + 'px';
+    svg.style.height = (alto * 1.3) + 'px';
+    svg.style.marginLeft = (-alto/2) + 'px';
+    svg.style.setProperty('--d', retraso + 's');
+    svg.style.opacity = profundidad;
+
+    var inclina = (Math.random()*10 - 5).toFixed(1);
+    var curva = 14 + Math.random()*10;
+ 
+    svg.innerHTML =
+      '<g transform="rotate('+inclina+' 100 260)">' +
+        '<path class="tallo" pathLength="1" stroke-width="5" d="M100 264 C '+(100-curva)+' 210 '+(100+curva)+' 150 100 96"/>' +
+        '<path class="hoja" d="M97 208 C 74 205 55 190 44 162 C 71 167 91 182 97 208 Z"/>' +
+        '<path class="nervio" pathLength="1" stroke-width="1.8" d="M97 208 C 79 199 63 185 47 164"/>' +
+        '<path class="hoja" d="M104 166 C 127 163 146 149 157 122 C 130 127 110 141 104 166 Z"/>' +
+        '<path class="nervio" pathLength="1" stroke-width="1.8" d="M104 166 C 122 157 138 143 154 125"/>' +
+        '<g class="flor" transform="translate(100 96)">' +
+          '<circle class="halo" r="42"/>' +
+          petalos() +
+          '<circle class="corazon" r="9"/>' +
+          '<line class="estambre" x1="0" y1="0" x2="-8" y2="-27"/>' +
+          '<line class="estambre" x1="0" y1="0" x2="1" y2="-33"/>' +
+          '<line class="estambre" x1="0" y1="0" x2="9" y2="-26"/>' +
+          '<circle class="polen" cx="-8" cy="-28" r="2.6"/>' +
+          '<circle class="polen" cx="1" cy="-34" r="2.8"/>' +
+          '<circle class="polen" cx="9" cy="-27" r="2.6"/>' +
+        '</g>' +
+      '</g>';
+ 
+    jardin.appendChild(svg);
+  }
+ 
+  var cantero = [
+    [10, 160, .2,  .6],
+    [25, 200, .55, .85],
+    [50, 220, .0,  1],
+    [75, 180, .75, .7],
+    [90, 165, 1.0, .65]
+  ];
+  cantero.forEach(function(l){ sembrar(l[0], l[1], l[2], l[3]); });
+ 
+  // Manejo directo de toque
+  escena.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var x = (e.clientX / window.innerWidth) * 100;
+    var tamano = esMovil ? (110 + Math.random()*80) : (150 + Math.random()*120);
+    sembrar(x, tamano, 0, .75 + Math.random()*.25);
+  }, {passive: false});
+})();
+</script>
+</body>
+</html>
+ 
