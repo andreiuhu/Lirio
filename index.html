@@ -26,6 +26,7 @@
     -webkit-user-select:none;
     user-select:none;
     -webkit-touch-callout:none;
+    font-family: system-ui, -apple-system, sans-serif;
   }
  
   .escena{
@@ -36,8 +37,31 @@
       radial-gradient(70% 45% at 20% 12%, rgba(255,255,255,.55), transparent 70%),
       linear-gradient(176deg,#7fb0e6 0%, #a9c8ee 26%, #d5dcf3 52%, #f6dfd6 76%, #ffe7cd 100%);
   }
+
+  /* Botón de control de sonido */
+  .btn-audio {
+    position: absolute;
+    top: max(15px, env(safe-area-inset-top));
+    right: 15px;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: #4a5568;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+  }
+  .btn-audio:active {
+    transform: scale(0.95);
+  }
  
-  /* Sol y nubes optimizados */
+  /* Sol y nubes */
   .sol{
     position:absolute;right:14%;top:16%;
     width:min(34vmin,300px);aspect-ratio:1;border-radius:50%;
@@ -72,7 +96,7 @@
     mask:radial-gradient(circle, transparent 60%, #000 60.4%, #000 66%, transparent 66.4%);
   }
  
-  /* Lluvia optimizada */
+  /* Lluvia */
   .lluvia{position:absolute;inset:-12% 0 0 0;pointer-events:none;overflow:hidden;}
   .lluvia.frente{z-index:7;}
   .lluvia.fondo{z-index:2;}
@@ -120,11 +144,12 @@
   }
   @keyframes onda{0%{transform:scaleX(.15);opacity:0;}30%{opacity:.8;}100%{transform:scaleX(1.7);opacity:0;}}
  
-  /* Lirios */
+  /* Lirios (Ajuste de animación de tallo arreglado) */
   .lirio{position:absolute;bottom:0;transform-origin:bottom center;overflow:visible;will-change:transform;}
   .lirio .tallo,.lirio .nervio{
     fill:none;stroke:var(--tallo);stroke-linecap:round;
-    stroke-dasharray:1;stroke-dashoffset:1;
+    stroke-dasharray:300;
+    stroke-dashoffset:300;
     animation:crecer 1.9s cubic-bezier(.24,.8,.3,1) forwards;
     animation-delay:var(--d,0s);
   }
@@ -175,6 +200,7 @@
 </svg>
  
 <main class="escena" id="escena">
+  <button id="btnAudio" class="btn-audio">🎵 Activar Sonido</button>
   <div class="sol" aria-hidden="true"></div>
   <div class="arcoiris" aria-hidden="true"></div>
   <div class="lluvia fondo" id="lluviaFondo" aria-hidden="true"></div>
@@ -187,6 +213,88 @@
 (function(){
   var esMovil = window.innerWidth < 768;
   var escena = document.getElementById('escena');
+  var btnAudio = document.getElementById('btnAudio');
+  
+  // Sistema de Audio Sintetizado (Sintetizador Web Audio API)
+  var audioCtx = null;
+  var rainGain = null;
+  var sonidoActivo = false;
+
+  function initAudio() {
+    if (!audioCtx) {
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+
+      // Ruido rosa/blanco filtrado para sonido de lluvia
+      var bufferSize = 2 * audioCtx.sampleRate;
+      var noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var output = noiseBuffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      var whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+
+      var filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(700, audioCtx.currentTime);
+
+      rainGain = audioCtx.createGain();
+      rainGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+
+      whiteNoise.connect(filter);
+      filter.connect(rainGain);
+      rainGain.connect(audioCtx.destination);
+      whiteNoise.start();
+      
+      sonidoActivo = true;
+      btnAudio.textContent = '🔊 Lluvia & Música';
+    } else {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+        sonidoActivo = true;
+        btnAudio.textContent = '🔊 Lluvia & Música';
+      } else if (sonidoActivo) {
+        audioCtx.suspend();
+        sonidoActivo = false;
+        btnAudio.textContent = '🔇 Sin Sonido';
+      } else {
+        audioCtx.resume();
+        sonidoActivo = true;
+        btnAudio.textContent = '🔊 Lluvia & Música';
+      }
+    }
+  }
+
+  function tocarCampana() {
+    if (!audioCtx || audioCtx.state !== 'running' || !sonidoActivo) return;
+    
+    // Escala pentatónica relajante
+    var notas = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+    var freq = notas[Math.floor(Math.random() * notas.length)];
+
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.2);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 2.2);
+  }
+
+  btnAudio.addEventListener('click', function(e){
+    e.stopPropagation();
+    initAudio();
+  });
  
   function llover(capa, cantidad, rapido){
     var frag = document.createDocumentFragment();
@@ -203,7 +311,6 @@
     capa.appendChild(frag);
   }
  
-  // Adaptar cantidad de elementos al rendimiento del dispositivo
   llover(document.getElementById('lluviaFondo'), esMovil ? 25 : 60, false);
   llover(document.getElementById('lluviaFrente'), esMovil ? 15 : 34, true);
 
@@ -264,11 +371,11 @@
  
     svg.innerHTML =
       '<g transform="rotate('+inclina+' 100 260)">' +
-        '<path class="tallo" pathLength="1" stroke-width="5" d="M100 264 C '+(100-curva)+' 210 '+(100+curva)+' 150 100 96"/>' +
+        '<path class="tallo" stroke-width="5" d="M100 264 C '+(100-curva)+' 210 '+(100+curva)+' 150 100 96"/>' +
         '<path class="hoja" d="M97 208 C 74 205 55 190 44 162 C 71 167 91 182 97 208 Z"/>' +
-        '<path class="nervio" pathLength="1" stroke-width="1.8" d="M97 208 C 79 199 63 185 47 164"/>' +
+        '<path class="nervio" stroke-width="1.8" d="M97 208 C 79 199 63 185 47 164"/>' +
         '<path class="hoja" d="M104 166 C 127 163 146 149 157 122 C 130 127 110 141 104 166 Z"/>' +
-        '<path class="nervio" pathLength="1" stroke-width="1.8" d="M104 166 C 122 157 138 143 154 125"/>' +
+        '<path class="nervio" stroke-width="1.8" d="M104 166 C 122 157 138 143 154 125"/>' +
         '<g class="flor" transform="translate(100 96)">' +
           '<circle class="halo" r="42"/>' +
           petalos() +
@@ -283,6 +390,7 @@
       '</g>';
  
     jardin.appendChild(svg);
+    tocarCampana();
   }
  
   var cantero = [
@@ -294,8 +402,9 @@
   ];
   cantero.forEach(function(l){ sembrar(l[0], l[1], l[2], l[3]); });
  
-  // Manejo directo de toque
   escena.addEventListener('pointerdown', function(e){
+    if (e.target === btnAudio) return;
+    if (!audioCtx) initAudio();
     e.preventDefault();
     var x = (e.clientX / window.innerWidth) * 100;
     var tamano = esMovil ? (110 + Math.random()*80) : (150 + Math.random()*120);
@@ -305,4 +414,3 @@
 </script>
 </body>
 </html>
- 
